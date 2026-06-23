@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>yu's 進度追蹤系統</title>
+  <title>yu's 進度追蹤系統｜文楷版</title>
   <meta name="theme-color" content="#5667d8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="yu's 進度">
@@ -388,7 +388,15 @@
 
     .mood-box canvas { max-height: 260px; }
     .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
+    .mood-note {
+      color: #3f4350;
+      line-height: 1.9;
+      padding: 4px 2px;
+    }
 
+    .mood-note p {
+      margin: 0 0 8px;
+    }
     .analysis-list {
       display: grid;
       gap: 8px;
@@ -1258,9 +1266,19 @@
         return;
       }
 
-      const activeCategories = selectedTrend === "total"
-        ? categories.filter((category) => rangeRecords.some((record) => record.category === category.name))
-        : categories.filter((item) => item.name === selectedTrend);
+      const categorySource = Array.from(
+        new Set([
+          ...categories.map((item) => item.name),
+          ...records.map((record) => record.category)
+        ])
+      ).map((name) => ({
+        name,
+        unit: getCategoryUnit(name) || records.find((record) => record.category === name)?.unit || ""
+      }));
+
+const activeCategories = selectedTrend === "total"
+  ? categorySource.filter((category) => rangeRecords.some((record) => record.category === category.name))
+  : categorySource.filter((item) => item.name === selectedTrend);
 
       const sums = buildTrendSums(
         rangeRecords,
@@ -1546,13 +1564,13 @@
         </div>
       `;
 
-      const adviceHtml = advice.map((item) => `
-        <div class="analysis-message">
-          <strong>${item.title}</strong>
-          ${item.text}
-        </div>
-      `).join("");
-
+      const adviceHtml = `
+  <div class="mood-note">
+    ${advice.map((item) => `
+      <p><strong>${item.title}：</strong>${item.text}</p>
+    `).join("")}
+  </div>
+`;
       const hiddenHtml = hiddenCount ? `
         <div class="analysis-message">
           <strong>有時段外的紀錄</strong>
@@ -1845,4 +1863,4 @@
     boot();
   </script>
 </body>
-</html>
+</html>‵‵‵‵‵‵
