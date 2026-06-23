@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>yu's 進度追蹤系統</title>
+  <title>yu's 進度追蹤系統｜文楷版</title>
   <meta name="theme-color" content="#5667d8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="yu's 進度">
@@ -388,15 +388,7 @@
 
     .mood-box canvas { max-height: 260px; }
     .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
-    .mood-note {
-      color: #3f4350;
-      line-height: 1.9;
-      padding: 4px 2px;
-    }
 
-    .mood-note p {
-      margin: 0 0 8px;
-    }
     .analysis-list {
       display: grid;
       gap: 8px;
@@ -483,6 +475,16 @@
     .analysis-message strong {
       display: block;
       margin-bottom: 3px;
+    }
+
+    .mood-note {
+      color: #3f4350;
+      line-height: 1.9;
+      padding: 4px 2px;
+    }
+
+    .mood-note p {
+      margin: 0 0 8px;
     }
 
     .export-hidden {
@@ -1001,6 +1003,11 @@
       return date ? `${date.getMonth() + 1}/${date.getDate()}` : dateKey;
     }
 
+    function formatShortDateLabel(dateKey) {
+      const date = parseLocalDate(`${dateKey}T00:00`);
+      return date ? `${date.getMonth() + 1}/${date.getDate()}` : dateKey;
+    }
+
     function getTrendRangeConfig() {
       const safeAnchor = trendAnchorDate || formatDateKey(new Date());
 
@@ -1271,14 +1278,16 @@
           ...categories.map((item) => item.name),
           ...records.map((record) => record.category)
         ])
-      ).map((name) => ({
-        name,
-        unit: getCategoryUnit(name) || records.find((record) => record.category === name)?.unit || ""
-      }));
+      )
+        .filter(Boolean)
+        .map((name) => ({
+          name,
+          unit: getCategoryUnit(name) || records.find((record) => record.category === name)?.unit || ""
+        }));
 
-const activeCategories = selectedTrend === "total"
-  ? categorySource.filter((category) => rangeRecords.some((record) => record.category === category.name))
-  : categorySource.filter((item) => item.name === selectedTrend);
+      const activeCategories = selectedTrend === "total"
+        ? categorySource.filter((category) => rangeRecords.some((record) => record.category === category.name))
+        : categorySource.filter((item) => item.name === selectedTrend);
 
       const sums = buildTrendSums(
         rangeRecords,
@@ -1286,7 +1295,7 @@ const activeCategories = selectedTrend === "total"
         selectedTrend === "total" ? null : selectedTrend
       );
 
-      const datasets = activeCategories.map((category) => {
+      const datasets = activeCategories.map((category, index) => {
         const color = colorForCategory(category.name);
         let cumulativeValue = 0;
 
@@ -1296,18 +1305,22 @@ const activeCategories = selectedTrend === "total"
           return cumulativeValue;
         });
 
+        const isTutor = category.name === "家教";
+
         return {
           label: `${category.name}（${category.unit}）`,
           data: cumulativeData,
-          borderColor: color.mark,
+          borderColor: isTutor ? "#4c91d9" : color.mark,
           backgroundColor: color.bg,
           pointRadius: 0,
           pointHoverRadius: 5,
           pointHitRadius: 12,
           tension: 0,
-          borderWidth: 3,
+          borderWidth: isTutor ? 4 : 3,
+          borderDash: isTutor ? [8, 4] : [],
           fill: false,
-          spanGaps: false
+          spanGaps: false,
+          order: isTutor ? -99 : index
         };
       });
 
@@ -1565,12 +1578,13 @@ const activeCategories = selectedTrend === "total"
       `;
 
       const adviceHtml = `
-  <div class="mood-note">
-    ${advice.map((item) => `
-      <p><strong>${item.title}：</strong>${item.text}</p>
-    `).join("")}
-  </div>
-`;
+        <div class="mood-note">
+          ${advice.map((item) => `
+            <p><strong>${item.title}：</strong>${item.text}</p>
+          `).join("")}
+        </div>
+      `;
+
       const hiddenHtml = hiddenCount ? `
         <div class="analysis-message">
           <strong>有時段外的紀錄</strong>
@@ -1863,4 +1877,4 @@ const activeCategories = selectedTrend === "total"
     boot();
   </script>
 </body>
-</html>‵‵‵‵‵‵
+</html>
