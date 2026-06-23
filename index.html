@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>yu's 進度追蹤系統｜粉圓版</title>
+  <title>yu's 進度追蹤系統</title>
   <meta name="theme-color" content="#5667d8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="yu's 進度">
@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@300;400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -32,7 +32,7 @@
       --afternoon-mark: #c3c6cc;
       --night: #f7f6f8;
       --night-mark: #c8c4cc;
-      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+      font-family: "LXGW WenKai TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -41,11 +41,11 @@
       margin: 0;
       color: var(--ink);
       background: #f4f5f8;
-      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+      font-family: "LXGW WenKai TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
     }
 
     button, input, select, textarea, table {
-      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+      font-family: "LXGW WenKai TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
     }
 
     button {
@@ -82,7 +82,12 @@
 
     textarea { min-height: 88px; resize: vertical; }
 
-    .app-shell { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    .app-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      overflow-x: hidden;
+    }
 
     .topbar {
       display: flex;
@@ -92,7 +97,14 @@
       padding: 18px 0 22px;
     }
 
-    .brand h1 { margin: 0; font-size: 26px; letter-spacing: 0; }
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 42px);
+      line-height: 1.2;
+      padding-left: 6px;
+      letter-spacing: .02em;
+      overflow: visible;
+    }
     .brand p { margin: 6px 0 0; color: var(--muted); }
 
     .tabs {
@@ -480,7 +492,7 @@
     }
 
     @media (max-width: 920px) {
-      .app-shell { padding: 16px; }
+      .app-shell { padding: 24px 18px; }
       .topbar, .weekly-head { grid-template-columns: 1fr; display: grid; align-items: start; }
       .tabs, .weekly-controls { justify-content: stretch; }
       .tab-btn { flex: 1; min-width: 0; }
@@ -577,6 +589,20 @@
 
       .event-time { font-size: 8px; }
       .event-title { font-size: 9px; }
+
+      .brand h1 {
+        font-size: 34px;
+        padding-left: 8px;
+      }
+
+      .brand p {
+        font-size: 18px;
+        padding-left: 8px;
+      }
+
+      .chart-wrap {
+        min-height: 360px;
+      }
     }
 
     /* 匯出圖片時固定使用桌面寬度，避免手機截圖被壓縮或截斷。 */
@@ -962,6 +988,11 @@
       return records.filter((record) => weekKeys.has(getRecordDateKey(record)));
     }
 
+    function formatShortDateLabel(dateKey) {
+      const date = parseLocalDate(`${dateKey}T00:00`);
+      return date ? `${date.getMonth() + 1}/${date.getDate()}` : dateKey;
+    }
+
     function getTrendRangeConfig() {
       const safeAnchor = trendAnchorDate || formatDateKey(new Date());
 
@@ -974,8 +1005,9 @@
         const labels = Array.from(new Set(dayRecords.map((record) => record.dateTime.substring(11, 16))));
         return {
           labels,
+          displayLabels: labels,
           records: dayRecords,
-          title: `${safeAnchor} 單日累積趨勢`,
+          title: `${formatShortDateLabel(safeAnchor)} 單日累積趨勢`,
           getValueKey: (record) => record.dateTime.substring(11, 16)
         };
       }
@@ -986,8 +1018,9 @@
         const labelSet = new Set(labels);
         return {
           labels,
+          displayLabels: labels.map(formatShortDateLabel),
           records: records.filter((record) => labelSet.has(getRecordDateKey(record))),
-          title: `${labels[0]} ～ ${labels[6]} 每週累積趨勢`,
+          title: `${formatShortDateLabel(labels[0])} ～ ${formatShortDateLabel(labels[6])} 每週累積趨勢`,
           getValueKey: (record) => getRecordDateKey(record)
         };
       }
@@ -997,6 +1030,7 @@
       const labels = Array.from({ length: days }, (_, index) => `${monthKey}-${pad2(index + 1)}`);
       return {
         labels,
+        displayLabels: labels.map(formatShortDateLabel),
         records: getRecordsForMonth(monthKey),
         title: `${getMonthLabel(monthKey)}每月累積趨勢`,
         getValueKey: (record) => getRecordDateKey(record)
@@ -1193,13 +1227,14 @@
 
       const range = getTrendRangeConfig();
       const labels = range.labels;
+      const displayLabels = range.displayLabels || labels;
       const rangeRecords = range.records;
 
       if (!labels.length || !rangeRecords.length) {
         trendChart = new Chart(canvas, {
           type: "line",
           data: {
-            labels: labels.length ? labels : ["無資料"],
+            labels: displayLabels.length ? displayLabels : ["無資料"],
             datasets: [{
               label: "尚無紀錄",
               data: labels.length ? labels.map(() => null) : [0],
@@ -1260,7 +1295,7 @@
 
       trendChart = new Chart(canvas, {
         type: "line",
-        data: { labels, datasets },
+        data: { labels: displayLabels, datasets },
         options: {
           ...baseChartOptions(),
           interaction: {
@@ -1285,9 +1320,10 @@
             x: {
               ticks: {
                 font: { family: getComputedStyle(document.body).fontFamily },
-                maxRotation: selectedTrendRange === "month" ? 45 : 0,
                 autoSkip: selectedTrendRange === "month",
-                maxTicksLimit: selectedTrendRange === "month" ? 12 : undefined
+                maxTicksLimit: selectedTrendRange === "month" ? 7 : undefined,
+                maxRotation: 0,
+                minRotation: 0
               },
               grid: { color: "#eef0f6" }
             },
