@@ -1,0 +1,1812 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>yu's 進度追蹤系統｜粉圓版</title>
+  <meta name="theme-color" content="#5667d8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="yu's 進度">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --ink: #252733;
+      --muted: #697080;
+      --line: #e7eaf0;
+      --soft: #f7f8fb;
+      --panel: #ffffff;
+      --accent: #5667d8;
+      --accent-soft: #eef0ff;
+      --danger: #c94444;
+      --morning: #f7f7f8;
+      --morning-mark: #c7c9cf;
+      --afternoon: #f5f6f7;
+      --afternoon-mark: #c3c6cc;
+      --night: #f7f6f8;
+      --night-mark: #c8c4cc;
+      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f4f5f8;
+      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    button, input, select, textarea, table {
+      font-family: "Huninn", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    button {
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 10px 14px;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(86, 103, 216, .18); }
+    button.ghost { background: #eef0f6; color: var(--ink); }
+    button.danger { background: var(--danger); }
+    button.small { padding: 7px 10px; font-size: 13px; }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 11px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(86, 103, 216, .12);
+    }
+
+    textarea { min-height: 88px; resize: vertical; }
+
+    .app-shell { max-width: 1240px; margin: 0 auto; padding: 24px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 0 22px;
+    }
+
+    .brand h1 { margin: 0; font-size: 26px; letter-spacing: 0; }
+    .brand p { margin: 6px 0 0; color: var(--muted); }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      background: #e8ebf2;
+      padding: 5px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+      border-radius: 6px;
+      min-width: 130px;
+    }
+
+    .tab-btn:hover { box-shadow: none; }
+    .tab-btn.active { color: #fff; background: var(--accent); }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(37, 39, 51, .05);
+    }
+
+    .panel h2, .panel h3 { margin: 0 0 14px; letter-spacing: 0; }
+    .panel h2 { font-size: 20px; }
+    .panel h3 { font-size: 17px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-weight: 700; font-size: 13px; color: #3f4350; }
+
+    .stack { display: grid; gap: 14px; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .row.wrap { flex-wrap: wrap; }
+    .row > * { min-width: 0; }
+
+    .category-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .category-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 8px; }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar .row { flex: 1; justify-content: flex-end; }
+    .toolbar select { max-width: 180px; }
+
+    .trend-range-mode { max-width: 110px !important; }
+    .trend-anchor-date { max-width: 170px; }
+
+    .chart-wrap {
+      min-height: 300px;
+      display: grid;
+      align-items: center;
+    }
+
+    .trend-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .trend-chip {
+      background: #eef0f6;
+      color: var(--ink);
+      border: 1px solid transparent;
+      box-shadow: none;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    .trend-chip.active { background: var(--accent-soft); color: var(--accent); border-color: #cfd5ff; }
+
+    .history-list { display: grid; gap: 10px; }
+
+    .history-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+
+    .history-card:hover {
+      border-color: #ccd3e0;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(37, 39, 51, .08);
+    }
+
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    .history-title { font-weight: 800; margin-bottom: 5px; }
+    .history-note { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .weekly-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .weekly-title small {
+      display: block;
+      color: var(--accent);
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .weekly-title h2 { margin: 0; font-size: 24px; }
+    .weekly-title p { margin: 6px 0 0; color: var(--muted); }
+
+    .weekly-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .weekly-controls select { min-width: 150px; }
+
+    #weeklyCaptureArea {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(37, 39, 51, .05);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: 112px repeat(7, minmax(92px, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .day-head, .time-head, .slot-label, .slot-cell {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .day-head:nth-child(8), .slot-cell:nth-child(8n) { border-right: 0; }
+
+    .time-head {
+      min-height: 64px;
+      background: #fafbfe;
+    }
+
+    .day-head {
+      min-height: 64px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: #fafbfe;
+    }
+
+    .day-head strong { font-size: 15px; }
+    .day-head span { color: var(--muted); font-size: 13px; margin-top: 2px; display: block; }
+    .day-head.today { background: var(--accent-soft); color: var(--accent); }
+    .day-head.today span { color: var(--accent); }
+
+    .slot-label {
+      min-height: 126px;
+      padding: 14px 10px;
+      display: grid;
+      align-content: start;
+      gap: 3px;
+      font-weight: 800;
+    }
+
+    .slot-label small { color: var(--muted); font-weight: 600; line-height: 1.35; }
+    .slot-label.morning,
+    .slot-label.afternoon,
+    .slot-label.night {
+      background: #f5f6f8;
+      border-left: 4px solid #c8cbd1;
+    }
+
+    .slot-cell {
+      min-height: 126px;
+      padding: 8px;
+      display: grid;
+      align-content: stretch;
+      grid-auto-rows: 1fr;
+      gap: 7px;
+    }
+
+    .slot-cell.morning,
+    .slot-cell.afternoon,
+    .slot-cell.night {
+      background: #fafafb;
+    }
+
+    .event-card {
+      --event-bg: #f4f0ff;
+      --event-mark: #8a63d2;
+      text-align: left;
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      border-left: 4px solid var(--event-mark);
+      background: var(--event-bg);
+      color: var(--ink);
+      padding: 7px 8px;
+      box-shadow: none;
+      display: grid;
+      gap: 2px;
+      min-height: 50px;
+    }
+
+    .event-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 7px 14px rgba(37, 39, 51, .10);
+    }
+
+    .event-time { font-size: 12px; color: #404653; font-weight: 800; }
+    .event-title { font-size: 13px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+
+    .weekly-side {
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .mood-box canvas { max-height: 260px; }
+    .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
+
+    .analysis-list {
+      display: grid;
+      gap: 8px;
+      color: #3f4350;
+      line-height: 1.7;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(27, 31, 42, .42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 30;
+    }
+
+    .modal-backdrop.active { display: flex; }
+
+    .modal {
+      width: min(720px, 100%);
+      max-height: 88vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .2);
+      padding: 18px;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .modal-head h3 { margin: 0; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .detail-item {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .detail-item.full { grid-column: 1 / -1; }
+    .detail-label { color: var(--muted); font-size: 12px; font-weight: 800; margin-bottom: 3px; }
+    .detail-value { font-weight: 700; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+    .detail-note-editor {
+      width: 100%;
+      min-height: 120px;
+      margin-top: 6px;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .detail-actions .row {
+      flex-wrap: wrap;
+    }
+
+    .analysis-message {
+      background: #f8f9fc;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .analysis-message strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .export-hidden {
+      display: none !important;
+    }
+
+    .firebase-note {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      background: #f9fafc;
+      border: 1px dashed #d6dbe6;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    @media (max-width: 920px) {
+      .app-shell { padding: 16px; }
+      .topbar, .weekly-head { grid-template-columns: 1fr; display: grid; align-items: start; }
+      .tabs, .weekly-controls { justify-content: stretch; }
+      .tab-btn { flex: 1; min-width: 0; }
+      .grid, .weekly-side { grid-template-columns: 1fr; }
+
+      /* 手機仍完整呈現週日至週六，不使用水平捲動。 */
+      .calendar-grid {
+        width: 100%;
+        overflow: hidden;
+        grid-template-columns: 76px repeat(7, minmax(0, 1fr));
+      }
+
+      .time-head,
+      .day-head {
+        min-height: 56px;
+      }
+
+      .day-head strong { font-size: 13px; }
+      .day-head span { font-size: 11px; }
+
+      .slot-label {
+        min-height: 112px;
+        padding: 11px 7px;
+        font-size: 14px;
+      }
+
+      .slot-label small {
+        font-size: 10px;
+        overflow-wrap: anywhere;
+      }
+
+      .slot-cell {
+        min-height: 112px;
+        padding: 4px 3px;
+        gap: 4px;
+      }
+
+      .event-card {
+        min-height: 42px;
+        padding: 5px 4px;
+        border-left-width: 3px;
+      }
+
+      .event-time {
+        font-size: 9px;
+        letter-spacing: -0.25px;
+      }
+
+      .event-title {
+        font-size: 10px;
+        line-height: 1.2;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .form-grid, .detail-grid { grid-template-columns: 1fr; }
+      .weekly-controls select, .weekly-controls button { width: 100%; }
+      .toolbar .row { justify-content: stretch; }
+      .toolbar select, .toolbar button { max-width: none; flex: 1; }
+
+      #weeklyCaptureArea {
+        padding: 8px;
+      }
+
+      .weekly-title h2 { font-size: 20px; }
+      .weekly-title p { font-size: 13px; }
+
+      .calendar-grid {
+        grid-template-columns: 62px repeat(7, minmax(0, 1fr));
+      }
+
+      .day-head strong { font-size: 12px; }
+      .day-head span { font-size: 9px; }
+
+      .slot-label {
+        min-height: 104px;
+        padding: 9px 5px;
+        font-size: 13px;
+      }
+
+      .slot-label small {
+        font-size: 8px;
+        line-height: 1.25;
+      }
+
+      .slot-cell {
+        min-height: 104px;
+        padding: 3px 2px;
+      }
+
+      .event-card {
+        padding: 4px 3px;
+      }
+
+      .event-time { font-size: 8px; }
+      .event-title { font-size: 9px; }
+    }
+
+    /* 匯出圖片時固定使用桌面寬度，避免手機截圖被壓縮或截斷。 */
+    #weeklyCaptureArea.export-mode {
+      width: 1400px;
+      max-width: none;
+    }
+
+    #weeklyCaptureArea.export-mode .weekly-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+    }
+
+    #weeklyCaptureArea.export-mode .weekly-controls {
+      justify-content: flex-end;
+    }
+
+    #weeklyCaptureArea.export-mode .calendar-grid {
+      width: 100%;
+      overflow: visible;
+      grid-template-columns: 112px repeat(7, minmax(92px, 1fr));
+    }
+
+    #weeklyCaptureArea.export-mode .time-head,
+    #weeklyCaptureArea.export-mode .day-head {
+      min-height: 64px;
+    }
+
+    #weeklyCaptureArea.export-mode .slot-label,
+    #weeklyCaptureArea.export-mode .slot-cell {
+      min-height: 126px;
+    }
+
+    #weeklyCaptureArea.export-mode .slot-label {
+      padding: 14px 10px;
+      font-size: initial;
+    }
+
+    #weeklyCaptureArea.export-mode .slot-label small {
+      font-size: 13px;
+    }
+
+    #weeklyCaptureArea.export-mode .slot-cell {
+      padding: 8px;
+      gap: 7px;
+    }
+
+    #weeklyCaptureArea.export-mode .event-card {
+      min-height: 50px;
+      padding: 7px 8px;
+      border-left-width: 4px;
+    }
+
+    #weeklyCaptureArea.export-mode .event-time { font-size: 12px; }
+    #weeklyCaptureArea.export-mode .event-title { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1>yu's 進度追蹤系統</h1>
+        <p>每日記錄、趨勢、週安排與心情分析</p>
+      </div>
+      <nav class="tabs" aria-label="主要頁面">
+        <button class="tab-btn active" data-page="daily" type="button">每日日常記錄</button>
+        <button class="tab-btn" data-page="insight" type="button">每週安排</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="page-daily" class="page active">
+        <div class="grid">
+          <div class="stack">
+            <section class="panel">
+              <h2>自訂追蹤項目</h2>
+              <form id="categoryForm" class="form-grid">
+                <div class="field">
+                  <label for="categoryName">項目名稱</label>
+                  <input id="categoryName" placeholder="資管專題" required>
+                </div>
+                <div class="field">
+                  <label for="categoryUnit">單位</label>
+                  <input id="categoryUnit" placeholder="小時 / 次 / 頁 / 題" required>
+                </div>
+                <div class="field full">
+                  <button type="submit">新增項目</button>
+                </div>
+              </form>
+              <div id="categoryList" class="category-list"></div>
+            </section>
+
+            <section class="panel">
+              <h2>新增每日進度紀錄</h2>
+              <form id="recordForm" class="form-grid">
+                <div class="field">
+                  <label for="recordDate">日期</label>
+                  <input id="recordDate" type="date" required>
+                </div>
+                <div class="field">
+                  <label for="recordTime">時間</label>
+                  <input id="recordTime" type="time" required>
+                </div>
+                <div class="field">
+                  <label for="recordCategory">追蹤項目</label>
+                  <select id="recordCategory" required></select>
+                </div>
+                <div class="field">
+                  <label for="recordValue">量化數值</label>
+                  <input id="recordValue" type="number" step="0.1" min="0" placeholder="2" required>
+                </div>
+                <div class="field">
+                  <label for="recordMood">心情</label>
+                  <select id="recordMood">
+                    <option>開心</option>
+                    <option>平穩</option>
+                    <option>疲憊</option>
+                    <option>焦慮</option>
+                    <option>有成就感</option>
+                  </select>
+                </div>
+                <div class="field full">
+                  <label for="recordNote">里程碑備註</label>
+                  <textarea id="recordNote" placeholder="今天完成了..."></textarea>
+                </div>
+                <div class="field full">
+                  <button type="submit">儲存紀錄並查看週安排</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="firebase-note">
+              Firebase：在檔案底部的 <strong>firebaseConfig</strong> 填入專案設定後會自動使用 Firestore；未設定時會先用瀏覽器 localStorage 保存。
+            </section>
+          </div>
+
+          <div class="stack">
+            <section class="panel">
+              <div class="toolbar">
+                <h2>進度趨勢</h2>
+                <div class="row wrap">
+                  <select id="trendRangeMode" class="trend-range-mode" aria-label="趨勢時間範圍">
+                    <option value="month">月</option>
+                    <option value="week">週</option>
+                    <option value="day">日</option>
+                  </select>
+                  <input id="trendAnchorDate" class="trend-anchor-date" type="date" aria-label="趨勢基準日期">
+                  <select id="globalMonthSelect" aria-label="月份篩選"></select>
+                </div>
+              </div>
+              <div id="trendTabs" class="trend-tabs"></div>
+              <div class="chart-wrap">
+                <canvas id="trendChart"></canvas>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="toolbar">
+                <h2>歷史里程碑紀錄</h2>
+              </div>
+              <div id="historyList" class="history-list"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-insight" class="page">
+        <div id="weeklyCaptureArea">
+          <div class="weekly-head">
+            <div class="weekly-title">
+              <small id="weeklyEnglishTitle">June Weekly</small>
+              <h2 id="weeklyChineseTitle">2026 年 6 月每週安排</h2>
+              <p id="weekRangeText">6/21 週日 到 6/27 週六</p>
+            </div>
+            <div class="weekly-controls">
+              <select id="weeklyMonthSelect" aria-label="每週安排月份"></select>
+              <select id="weeklyDaySelect" aria-label="每週安排日期"></select>
+              <button id="saveImageBtn" type="button">儲存成圖片</button>
+            </div>
+          </div>
+
+          <div id="calendarGrid" class="calendar-grid" aria-label="每週安排"></div>
+
+          <div class="weekly-side">
+            <section class="panel mood-box">
+              <h3>當週心情</h3>
+              <div id="moodEmpty" class="empty" hidden>本週尚無心情紀錄</div>
+              <canvas id="moodChart"></canvas>
+            </section>
+            <section class="panel">
+              <h3>當週狀態分析與提醒</h3>
+              <div id="weeklyAnalysis" class="analysis-list"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="detailModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="detailTitle">紀錄詳細內容</h3>
+        <button id="closeModalBtn" class="ghost small" type="button">關閉</button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    const STORE_KEY = "yu-progress-tracker-v1";
+    const PALETTE = [
+      ["#ffe8f0", "#d85a83"],
+      ["#e5f3ff", "#4c91d9"],
+      ["#fff0de", "#db8a3a"],
+      ["#f0e8ff", "#8a63d2"],
+      ["#e9f8ed", "#54a86b"],
+      ["#fff7d8", "#d8a92b"],
+      ["#e8f4f2", "#3c9b91"],
+      ["#f5ecdf", "#b9854d"]
+    ];
+    const CATEGORY_COLORS = {
+      "資管專題": { bg: "#fbe5ee", mark: "#d85a83" },
+      "推甄準備": { bg: "#fff3cf", mark: "#d8a92b" },
+      "家教": { bg: "#e5f2fc", mark: "#4c91d9" },
+      "重訓": { bg: "#e7f5ea", mark: "#54a86b" },
+      "英文": { bg: "#eee8fb", mark: "#8a63d2" }
+    };
+    const WEEK_DAYS = ["日", "一", "二", "三", "四", "五", "六"];
+    const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const SLOTS = [
+      { key: "morning", label: "早上", range: "09:00–12:59" },
+      { key: "afternoon", label: "下午", range: "13:00–17:59" },
+      { key: "night", label: "晚上", range: "19:00–24:00" }
+    ];
+
+    let categories = [];
+    let records = [];
+    let selectedMonth = "";
+    let selectedWeeklyDate = "";
+    let currentActiveMainPage = "daily";
+    let selectedTrend = "total";
+    let selectedTrendRange = "month";
+    let trendAnchorDate = "";
+    let trendChart = null;
+    let moodChart = null;
+    let pendingJumpDate = null;
+    let db = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function parseLocalDate(dateString) {
+      if (!dateString) return null;
+      const normalized = String(dateString).trim().replace(" ", "T");
+      const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (!match) return null;
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const hour = Number(match[4] || 0);
+      const minute = Number(match[5] || 0);
+      return new Date(year, month - 1, day, hour, minute);
+    }
+
+    function formatDateKey(date) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function formatDateTimeKey(date) {
+      return `${formatDateKey(date)}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
+    function normalizeDateTime(dateString) {
+      const parsed = parseLocalDate(dateString);
+      return parsed ? formatDateTimeKey(parsed) : "";
+    }
+
+    function getRecordDateKey(record) {
+      return normalizeDateTime(record.dateTime).substring(0, 10);
+    }
+
+    function getRecordMonthKey(record) {
+      return getRecordDateKey(record).substring(0, 7);
+    }
+
+    function getMonthLabel(monthKey) {
+      const [year, month] = monthKey.split("-").map(Number);
+      return `${year} 年 ${month} 月`;
+    }
+
+    function getDaysInMonth(monthKey) {
+      const [year, month] = monthKey.split("-").map(Number);
+      return new Date(year, month, 0).getDate();
+    }
+
+    function hashString(text) {
+      let hash = 0;
+      for (let i = 0; i < text.length; i += 1) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    function colorForCategory(name) {
+      if (CATEGORY_COLORS[name]) {
+        return CATEGORY_COLORS[name];
+      }
+
+      const pair = PALETTE[hashString(name) % PALETTE.length];
+      return { bg: pair[0], mark: pair[1] };
+    }
+
+    function getCategoryUnit(name) {
+      return categories.find((item) => item.name === name)?.unit || "";
+    }
+
+    function isHourUnit(unit) {
+      return ["小時", "hour", "hours", "hr"].includes(String(unit).trim().toLowerCase());
+    }
+
+    function getTimeSlot(date) {
+      const hour = date.getHours();
+      if (hour >= 9 && hour <= 12) return "morning";
+      if (hour >= 13 && hour <= 17) return "afternoon";
+      if (hour >= 19 && hour <= 23) return "night";
+      return null;
+    }
+
+    function formatTime(date) {
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
+    function getEventTimeText(record) {
+      const start = parseLocalDate(record.dateTime);
+      if (!start) return "";
+      const unit = record.unit || getCategoryUnit(record.category);
+      if (isHourUnit(unit)) {
+        const end = new Date(start.getTime() + (Number(record.value) || 0) * 60 * 60 * 1000);
+        return `${formatTime(start)}–${formatTime(end)}`;
+      }
+      return formatTime(start);
+    }
+
+    function getWeekDates(targetDateKey) {
+      const target = parseLocalDate(`${targetDateKey}T00:00`);
+      const start = new Date(target);
+      start.setDate(target.getDate() - target.getDay());
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        return date;
+      });
+    }
+
+    function getAvailableMonths() {
+      const monthSet = new Set(records.map(getRecordMonthKey).filter(Boolean));
+      const todayMonth = formatDateKey(new Date()).substring(0, 7);
+      monthSet.add(todayMonth);
+      return Array.from(monthSet).sort();
+    }
+
+    function getRecordsForMonth(monthKey) {
+      return records.filter((record) => getRecordMonthKey(record) === monthKey);
+    }
+
+    function getRecordsForWeek(dateKey) {
+      const weekKeys = new Set(getWeekDates(dateKey).map(formatDateKey));
+      return records.filter((record) => weekKeys.has(getRecordDateKey(record)));
+    }
+
+    function getTrendRangeConfig() {
+      const safeAnchor = trendAnchorDate || formatDateKey(new Date());
+
+      if (selectedTrendRange === "day") {
+        const dayRecords = records
+          .filter((record) => getRecordDateKey(record) === safeAnchor)
+          .slice()
+          .sort((a, b) => a.dateTime.localeCompare(b.dateTime));
+
+        const labels = Array.from(new Set(dayRecords.map((record) => record.dateTime.substring(11, 16))));
+        return {
+          labels,
+          records: dayRecords,
+          title: `${safeAnchor} 單日累積趨勢`,
+          getValueKey: (record) => record.dateTime.substring(11, 16)
+        };
+      }
+
+      if (selectedTrendRange === "week") {
+        const weekDates = getWeekDates(safeAnchor);
+        const labels = weekDates.map(formatDateKey);
+        const labelSet = new Set(labels);
+        return {
+          labels,
+          records: records.filter((record) => labelSet.has(getRecordDateKey(record))),
+          title: `${labels[0]} ～ ${labels[6]} 每週累積趨勢`,
+          getValueKey: (record) => getRecordDateKey(record)
+        };
+      }
+
+      const monthKey = selectedMonth || safeAnchor.substring(0, 7);
+      const days = getDaysInMonth(monthKey);
+      const labels = Array.from({ length: days }, (_, index) => `${monthKey}-${pad2(index + 1)}`);
+      return {
+        labels,
+        records: getRecordsForMonth(monthKey),
+        title: `${getMonthLabel(monthKey)}每月累積趨勢`,
+        getValueKey: (record) => getRecordDateKey(record)
+      };
+    }
+
+    function syncTrendFilterVisibility() {
+      const isMonth = selectedTrendRange === "month";
+      $("globalMonthSelect").hidden = !isMonth;
+      $("trendAnchorDate").hidden = isMonth;
+      $("trendRangeMode").value = selectedTrendRange;
+      $("trendAnchorDate").value = trendAnchorDate || formatDateKey(new Date());
+    }
+
+    function initFirebaseIfConfigured() {
+      const configured = firebaseConfig.apiKey && firebaseConfig.projectId && window.firebase;
+      if (!configured) return;
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    }
+
+    function loadLocalData() {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    function saveLocalData() {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ categories, records }));
+    }
+
+    async function saveToFirebase() {
+      if (!db) {
+        saveLocalData();
+        return;
+      }
+      await db.collection("yuProgressTracker").doc("main").set({
+        categories,
+        records,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    async function fetchDataFromCloud(options = {}) {
+      if (db) {
+        const snapshot = await db.collection("yuProgressTracker").doc("main").get();
+        if (snapshot.exists) {
+          const data = snapshot.data();
+          categories = Array.isArray(data.categories) ? data.categories : [];
+          records = Array.isArray(data.records) ? data.records : [];
+        } else {
+          categories = [];
+          records = [];
+        }
+      } else {
+        const data = loadLocalData();
+        categories = Array.isArray(data?.categories) ? data.categories : [];
+        records = Array.isArray(data?.records) ? data.records : [];
+      }
+
+      records = records
+        .map((record) => ({ ...record, dateTime: normalizeDateTime(record.dateTime) }))
+        .filter((record) => record.dateTime);
+
+      renderAll({ keepSelectedDate: true });
+
+      const targetDate = options.targetDate || pendingJumpDate;
+      if (options.jumpToInsight && targetDate) {
+        openWeeklyScheduleForDate(targetDate);
+        pendingJumpDate = null;
+      }
+    }
+
+    function syncMonthSelects(targetMonth) {
+      selectedMonth = targetMonth;
+      const months = getAvailableMonths();
+      for (const select of [$("globalMonthSelect"), $("weeklyMonthSelect")]) {
+        select.innerHTML = months.map((month) => `<option value="${month}">${getMonthLabel(month)}</option>`).join("");
+        select.value = targetMonth;
+      }
+    }
+
+    function updateClinicDayOptions(targetDate) {
+      const monthKey = selectedMonth || targetDate.substring(0, 7);
+      const days = getDaysInMonth(monthKey);
+      const safeTarget = targetDate && targetDate.startsWith(monthKey) ? targetDate : `${monthKey}-01`;
+      selectedWeeklyDate = safeTarget;
+      $("weeklyDaySelect").innerHTML = Array.from({ length: days }, (_, index) => {
+        const day = index + 1;
+        const value = `${monthKey}-${pad2(day)}`;
+        return `<option value="${value}">${day} 日</option>`;
+      }).join("");
+      $("weeklyDaySelect").value = selectedWeeklyDate;
+    }
+
+    function switchMainPage(pageName, targetDate) {
+      currentActiveMainPage = pageName;
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.page === pageName);
+      });
+      $("page-daily").classList.toggle("active", pageName === "daily");
+      $("page-insight").classList.toggle("active", pageName === "insight");
+      if (pageName === "insight" && targetDate) {
+        openWeeklyScheduleForDate(targetDate);
+      }
+    }
+
+    function openWeeklyScheduleForDate(targetDate) {
+      const normalizedDate = normalizeDateTime(`${targetDate}T00:00`).substring(0, 10);
+      const targetMonth = normalizedDate.substring(0, 7);
+
+      selectedMonth = targetMonth;
+      trendAnchorDate = normalizedDate;
+      currentActiveMainPage = "insight";
+
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.page === "insight");
+      });
+      $("page-daily").classList.remove("active");
+      $("page-insight").classList.add("active");
+
+      syncMonthSelects(targetMonth);
+      updateClinicDayOptions(normalizedDate);
+      syncTrendFilterVisibility();
+      renderTrendChart();
+      renderHistory();
+      renderClinicTablePage();
+
+      requestAnimationFrame(() => {
+        renderMoodChart();
+        $("weeklyCaptureArea").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    function renderAll() {
+      const fallbackMonth = selectedMonth || getAvailableMonths().at(-1) || formatDateKey(new Date()).substring(0, 7);
+      syncMonthSelects(fallbackMonth);
+      if (!selectedWeeklyDate || !selectedWeeklyDate.startsWith(selectedMonth)) {
+        const todayKey = formatDateKey(new Date());
+        const targetDate = todayKey.startsWith(selectedMonth) ? todayKey : `${selectedMonth}-01`;
+        updateClinicDayOptions(targetDate);
+      } else {
+        updateClinicDayOptions(selectedWeeklyDate);
+      }
+      syncTrendFilterVisibility();
+      renderCategories();
+      renderRecordCategoryOptions();
+      renderTrendTabs();
+      renderTrendChart();
+      renderHistory();
+      renderClinicTablePage();
+    }
+
+    function renderCategories() {
+      $("categoryList").innerHTML = categories.map((category) => {
+        const color = colorForCategory(category.name);
+        return `
+          <div class="category-pill">
+            <span><span class="dot" style="background:${color.mark}"></span>${escapeHtml(category.name)} · ${escapeHtml(category.unit)}</span>
+            <button class="ghost small" type="button" data-delete-category="${category.id}">刪除</button>
+          </div>
+        `;
+      }).join("") || `<div class="empty">尚未建立追蹤項目</div>`;
+    }
+
+    function renderRecordCategoryOptions() {
+      $("recordCategory").innerHTML = categories.map((category) => (
+        `<option value="${escapeAttr(category.name)}">${escapeHtml(category.name)}（${escapeHtml(category.unit)}）</option>`
+      )).join("");
+    }
+
+    function renderTrendTabs() {
+      const buttons = [`<button class="trend-chip ${selectedTrend === "total" ? "active" : ""}" data-trend="total" type="button">總趨勢</button>`]
+        .concat(categories.map((category) => (
+          `<button class="trend-chip ${selectedTrend === category.name ? "active" : ""}" data-trend="${escapeAttr(category.name)}" type="button">${escapeHtml(category.name)}</button>`
+        )));
+      $("trendTabs").innerHTML = buttons.join("");
+      if (selectedTrend !== "total" && !categories.some((item) => item.name === selectedTrend)) selectedTrend = "total";
+    }
+
+    function buildTrendSums(rangeRecords, getValueKey, categoryName = null) {
+      const map = new Map();
+      for (const record of rangeRecords) {
+        if (categoryName && record.category !== categoryName) continue;
+        const key = `${getValueKey(record)}|${record.category}`;
+        map.set(key, (map.get(key) || 0) + (Number(record.value) || 0));
+      }
+      return map;
+    }
+
+    function renderTrendChart() {
+      const canvas = $("trendChart");
+      if (trendChart) trendChart.destroy();
+
+      const range = getTrendRangeConfig();
+      const labels = range.labels;
+      const rangeRecords = range.records;
+
+      if (!labels.length || !rangeRecords.length) {
+        trendChart = new Chart(canvas, {
+          type: "line",
+          data: {
+            labels: labels.length ? labels : ["無資料"],
+            datasets: [{
+              label: "尚無紀錄",
+              data: labels.length ? labels.map(() => null) : [0],
+              borderColor: "#c3c8d4",
+              backgroundColor: "#eef0f6"
+            }]
+          },
+          options: {
+            ...baseChartOptions(),
+            plugins: {
+              ...baseChartOptions().plugins,
+              title: {
+                display: true,
+                text: range.title,
+                color: "#3f4350",
+                font: { family: getComputedStyle(document.body).fontFamily, size: 14, weight: "bold" }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      const activeCategories = selectedTrend === "total"
+        ? categories.filter((category) => rangeRecords.some((record) => record.category === category.name))
+        : categories.filter((item) => item.name === selectedTrend);
+
+      const sums = buildTrendSums(
+        rangeRecords,
+        range.getValueKey,
+        selectedTrend === "total" ? null : selectedTrend
+      );
+
+      const datasets = activeCategories.map((category) => {
+        const color = colorForCategory(category.name);
+        let cumulativeValue = 0;
+
+        const cumulativeData = labels.map((label) => {
+          const key = `${label}|${category.name}`;
+          cumulativeValue += sums.get(key) || 0;
+          return cumulativeValue;
+        });
+
+        return {
+          label: `${category.name}（${category.unit}）`,
+          data: cumulativeData,
+          borderColor: color.mark,
+          backgroundColor: color.bg,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 12,
+          tension: 0,
+          borderWidth: 3,
+          fill: false,
+          spanGaps: false
+        };
+      });
+
+      trendChart = new Chart(canvas, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          ...baseChartOptions(),
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            ...baseChartOptions().plugins,
+            title: {
+              display: true,
+              text: range.title,
+              color: "#3f4350",
+              font: { family: getComputedStyle(document.body).fontFamily, size: 14, weight: "bold" }
+            },
+            tooltip: {
+              mode: "index",
+              intersect: false,
+              filter: (context) => context.raw !== null
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: { family: getComputedStyle(document.body).fontFamily },
+                maxRotation: selectedTrendRange === "month" ? 45 : 0,
+                autoSkip: selectedTrendRange === "month",
+                maxTicksLimit: selectedTrendRange === "month" ? 12 : undefined
+              },
+              grid: { color: "#eef0f6" }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { font: { family: getComputedStyle(document.body).fontFamily } },
+              grid: { color: "#eef0f6" }
+            }
+          }
+        }
+      });
+    }
+
+    function baseChartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: {
+              usePointStyle: true,
+              pointStyle: "line",
+              boxWidth: 42,
+              boxHeight: 4,
+              padding: 18,
+              color: "#5f6675",
+              font: { family: getComputedStyle(document.body).fontFamily }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { family: getComputedStyle(document.body).fontFamily } }, grid: { color: "#eef0f6" } },
+          y: { beginAtZero: true, ticks: { font: { family: getComputedStyle(document.body).fontFamily } }, grid: { color: "#eef0f6" } }
+        }
+      };
+    }
+
+    function renderHistory() {
+      const monthRecords = getRecordsForMonth(selectedMonth).slice().sort((a, b) => b.dateTime.localeCompare(a.dateTime));
+      $("historyList").innerHTML = monthRecords.map((record) => {
+        const color = colorForCategory(record.category);
+        return `
+          <article class="history-card" data-record-id="${record.id}">
+            <div class="history-meta">
+              <span>${escapeHtml(record.dateTime.replace("T", " "))}</span>
+              <span>${escapeHtml(record.mood || "")}</span>
+            </div>
+            <div class="history-title"><span class="dot" style="background:${color.mark}"></span>${escapeHtml(record.category)}</div>
+            <div class="history-note">${escapeHtml(record.note || "沒有備註")}</div>
+            <div class="history-meta" style="margin-top:8px;margin-bottom:0;">
+              <span>${escapeHtml(String(record.value))} ${escapeHtml(record.unit || getCategoryUnit(record.category))}</span>
+            </div>
+          </article>
+        `;
+      }).join("") || `<div class="empty">這個月份尚無里程碑紀錄，新增進度後會自動顯示在這裡。</div>`;
+    }
+
+    function renderClinicTablePage() {
+      const dateKey = selectedWeeklyDate || `${selectedMonth}-01`;
+      const weekDates = getWeekDates(dateKey);
+      const weekKeys = weekDates.map(formatDateKey);
+      const monthNumber = Number(selectedMonth.substring(5, 7));
+      const yearNumber = Number(selectedMonth.substring(0, 4));
+      $("weeklyEnglishTitle").textContent = `${MONTH_NAMES[monthNumber - 1]} Weekly`;
+      $("weeklyChineseTitle").textContent = `${yearNumber} 年 ${monthNumber} 月每週安排`;
+      $("weekRangeText").textContent = `${weekDates[0].getMonth() + 1}/${weekDates[0].getDate()} 週日 到 ${weekDates[6].getMonth() + 1}/${weekDates[6].getDate()} 週六`;
+
+      const todayKey = formatDateKey(new Date());
+      const headHtml = [`<div class="time-head"></div>`].concat(weekDates.map((date, index) => {
+        const dateLabel = `${date.getMonth() + 1}/${date.getDate()}`;
+        return `<div class="day-head ${formatDateKey(date) === todayKey ? "today" : ""}"><div><strong>${WEEK_DAYS[index]}</strong><span>${dateLabel}</span></div></div>`;
+      }));
+
+      const bodyHtml = SLOTS.flatMap((slot) => {
+        const row = [`<div class="slot-label ${slot.key}">${slot.label}<small>${slot.range}</small></div>`];
+        for (const dayKey of weekKeys) {
+          const events = records
+            .filter((record) => getRecordDateKey(record) === dayKey)
+            .filter((record) => {
+              const date = parseLocalDate(record.dateTime);
+              return date && getTimeSlot(date) === slot.key;
+            })
+            .sort((a, b) => a.dateTime.localeCompare(b.dateTime));
+          row.push(`<div class="slot-cell ${slot.key}">${events.map(renderEventCard).join("")}</div>`);
+        }
+        return row;
+      });
+      $("calendarGrid").innerHTML = headHtml.concat(bodyHtml).join("");
+      renderMoodChart();
+      renderWeeklyAnalysis();
+    }
+
+    function renderEventCard(record) {
+      const color = colorForCategory(record.category);
+      return `
+        <button class="event-card" data-record-id="${record.id}" type="button" style="--event-bg:${color.bg};--event-mark:${color.mark}">
+          <span class="event-time">${escapeHtml(getEventTimeText(record))}</span>
+          <span class="event-title">${escapeHtml(record.category)}</span>
+        </button>
+      `;
+    }
+
+    function renderMoodChart() {
+      const canvas = $("moodChart");
+      if (moodChart) {
+        moodChart.destroy();
+        moodChart = null;
+      }
+      const weekRecords = getRecordsForWeek(selectedWeeklyDate || `${selectedMonth}-01`).filter((record) => record.mood);
+      const counts = new Map();
+      weekRecords.forEach((record) => counts.set(record.mood, (counts.get(record.mood) || 0) + 1));
+      const labels = Array.from(counts.keys());
+      $("moodEmpty").hidden = labels.length > 0;
+      canvas.hidden = labels.length === 0;
+      if (!labels.length) return;
+      moodChart = new Chart(canvas, {
+        type: "pie",
+        data: {
+          labels,
+          datasets: [{
+            data: labels.map((label) => counts.get(label)),
+            backgroundColor: ["#79a7e3", "#95d2a4", "#f2c96d", "#df8e8e", "#a990dc", "#7fc7c0"]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { font: { family: getComputedStyle(document.body).fontFamily } } }
+          }
+        }
+      });
+    }
+
+    function renderWeeklyAnalysis() {
+      const weekRecords = getRecordsForWeek(selectedWeeklyDate || `${selectedMonth}-01`);
+      const visibleRecords = weekRecords.filter((record) => getTimeSlot(parseLocalDate(record.dateTime)));
+      const totalValue = weekRecords.reduce((sum, record) => sum + (Number(record.value) || 0), 0);
+      const hiddenCount = weekRecords.length - visibleRecords.length;
+
+      if (!weekRecords.length) {
+        $("weeklyAnalysis").innerHTML = `
+          <div class="analysis-message">
+            <strong>本週尚無紀錄</strong>
+            可以先記下一件今天完成的小事，讓週安排慢慢累積出你的節奏。
+          </div>
+        `;
+        return;
+      }
+
+      const moodCounts = new Map();
+      weekRecords
+        .filter((record) => record.mood)
+        .forEach((record) => moodCounts.set(record.mood, (moodCounts.get(record.mood) || 0) + 1));
+
+      const moodEntries = Array.from(moodCounts.entries()).sort((a, b) => b[1] - a[1]);
+      const topMood = moodEntries[0]?.[0] || "尚無";
+      const anxiousCount = moodCounts.get("焦慮") || 0;
+      const tiredCount = moodCounts.get("疲憊") || 0;
+      const happyCount = moodCounts.get("開心") || 0;
+      const achievementCount = moodCounts.get("有成就感") || 0;
+      const calmCount = moodCounts.get("平穩") || 0;
+
+      const busiest = Array.from(WEEK_DAYS).map((day, index) => ({
+        day,
+        count: weekRecords.filter((record) => parseLocalDate(record.dateTime)?.getDay() === index).length
+      })).sort((a, b) => b.count - a.count)[0];
+
+      const advice = [];
+
+      if (anxiousCount >= 3) {
+        advice.push({
+          title: "最近有點太焦慮了",
+          text: `本週已有 ${anxiousCount} 筆焦慮紀錄。先不要急著把所有事情一次做完，可以把下一個任務縮小成 20～30 分鐘，完成後安排短暫休息。`
+        });
+      } else if (anxiousCount >= 1) {
+        advice.push({
+          title: "留意焦慮出現的時段",
+          text: `本週有 ${anxiousCount} 筆焦慮紀錄。可以回頭看看當天是在處理哪個項目，找出壓力來源並提早留出緩衝時間。`
+        });
+      }
+
+      if (tiredCount >= 3) {
+        advice.push({
+          title: "身體可能正在提醒你休息",
+          text: `本週已有 ${tiredCount} 筆疲憊紀錄。建議至少安排一個較輕量的時段，避免連續把高強度工作排在同一天。`
+        });
+      } else if (tiredCount >= 1) {
+        advice.push({
+          title: "別忽略疲憊訊號",
+          text: `本週有 ${tiredCount} 筆疲憊紀錄。完成進度很重要，但睡眠、補水與短暫離開螢幕也會影響後續效率。`
+        });
+      }
+
+      if (achievementCount >= 2 || happyCount >= 2) {
+        advice.push({
+          title: "這週有不錯的正向累積",
+          text: `開心與有成就感共出現 ${happyCount + achievementCount} 次。可以把當時完成的任務或方法記下來，作為下週安排的參考。`
+        });
+      }
+
+      if (calmCount >= 3 && anxiousCount === 0 && tiredCount === 0) {
+        advice.push({
+          title: "目前節奏相當穩定",
+          text: `本週有 ${calmCount} 筆平穩紀錄，而且沒有焦慮或疲憊。可以維持現在的工作量，不必為了追求更多進度而突然加重安排。`
+        });
+      }
+
+      if (!advice.length) {
+        advice.push({
+          title: "本週狀態正在形成",
+          text: `目前主要心情是「${escapeHtml(topMood)}」。繼續記錄幾天後，會更容易看出進度和心情之間的關係。`
+        });
+      }
+
+      const summaryHtml = `
+        <div class="analysis-message">
+          <strong>本週進度摘要</strong>
+          共有 ${weekRecords.length} 筆紀錄，量化總和為 ${Number(totalValue.toFixed(2))}；紀錄最多的是週${busiest.day}，共 ${busiest.count} 筆。
+        </div>
+      `;
+
+      const adviceHtml = advice.map((item) => `
+        <div class="analysis-message">
+          <strong>${item.title}</strong>
+          ${item.text}
+        </div>
+      `).join("");
+
+      const hiddenHtml = hiddenCount ? `
+        <div class="analysis-message">
+          <strong>有時段外的紀錄</strong>
+          本週有 ${hiddenCount} 筆資料不在週表顯示時段內，但仍已納入趨勢、心情與狀態分析。
+        </div>
+      ` : "";
+
+      $("weeklyAnalysis").innerHTML = summaryHtml + adviceHtml + hiddenHtml;
+    }
+
+    function showDetail(recordId) {
+      const record = records.find((item) => item.id === recordId);
+      if (!record) return;
+      const unit = record.unit || getCategoryUnit(record.category);
+      const recent = records
+        .filter((item) => item.category === record.category)
+        .sort((a, b) => a.dateTime.localeCompare(b.dateTime))
+        .slice(-6);
+
+      $("detailBody").innerHTML = `
+        <div class="detail-grid">
+          <div class="detail-item"><div class="detail-label">日期</div><div class="detail-value">${escapeHtml(record.dateTime.substring(0, 10))}</div></div>
+          <div class="detail-item"><div class="detail-label">時間</div><div class="detail-value">${escapeHtml(record.dateTime.substring(11, 16))}</div></div>
+          <div class="detail-item"><div class="detail-label">項目名稱</div><div class="detail-value">${escapeHtml(record.category)}</div></div>
+          <div class="detail-item"><div class="detail-label">數值與單位</div><div class="detail-value">${escapeHtml(String(record.value))} ${escapeHtml(unit)}</div></div>
+          <div class="detail-item"><div class="detail-label">心情</div><div class="detail-value">${escapeHtml(record.mood || "未填寫")}</div></div>
+          <div class="detail-item"><div class="detail-label">週表時間</div><div class="detail-value">${escapeHtml(getEventTimeText(record))}</div></div>
+          <div class="detail-item full">
+            <div class="detail-label">里程碑備註</div>
+            <textarea id="editRecordNote" class="detail-note-editor" placeholder="補上這次進度的內容、心得或下一步…">${escapeHtml(record.note || "")}</textarea>
+          </div>
+          <div class="detail-item full"><div class="detail-label">該項目最近趨勢</div><div class="detail-value">${escapeHtml(recent.map((item) => `${item.dateTime.substring(5, 10)}：${item.value} ${item.unit || unit}`).join("\n") || "尚無趨勢資料")}</div></div>
+        </div>
+        <div class="detail-actions">
+          <div class="row">
+            <button type="button" data-save-note="${record.id}">儲存備註</button>
+            <button class="ghost" type="button" data-cancel-note>取消</button>
+          </div>
+          <button class="danger" type="button" data-delete-record="${record.id}">刪除紀錄</button>
+        </div>
+      `;
+      $("detailModal").classList.add("active");
+    }
+
+    function closeModal() {
+      $("detailModal").classList.remove("active");
+    }
+
+    async function addRecord(event) {
+      event.preventDefault();
+
+      const categoryName = $("recordCategory").value;
+      const unit = getCategoryUnit(categoryName);
+      const dateTime = normalizeDateTime(`${$("recordDate").value}T${$("recordTime").value}`);
+      const value = Number($("recordValue").value);
+
+      if (!categoryName || !dateTime || !Number.isFinite(value) || value < 0) {
+        alert("請確認日期、時間、追蹤項目與量化數值皆已正確填寫。");
+        return;
+      }
+
+      const targetDate = dateTime.substring(0, 10);
+      const record = {
+        id: crypto.randomUUID(),
+        dateTime,
+        category: categoryName,
+        value,
+        unit,
+        mood: $("recordMood").value,
+        note: $("recordNote").value.trim()
+      };
+      pendingJumpDate = targetDate;
+      records.push(record);
+      await saveToFirebase();
+      await fetchDataFromCloud({ jumpToInsight: true, targetDate });
+      event.target.reset();
+      $("recordDate").value = targetDate;
+      $("recordTime").value = dateTime.substring(11, 16);
+    }
+
+    async function addCategory(event) {
+      event.preventDefault();
+      const name = $("categoryName").value.trim();
+      const unit = $("categoryUnit").value.trim();
+      if (!name || !unit) return;
+      if (!categories.some((item) => item.name === name)) {
+        categories.push({ id: crypto.randomUUID(), name, unit });
+        await saveToFirebase();
+        await fetchDataFromCloud();
+      }
+      event.target.reset();
+    }
+
+    async function updateRecordNote(recordId) {
+      const record = records.find((item) => item.id === recordId);
+      if (!record) return;
+
+      const noteInput = $("editRecordNote");
+      record.note = noteInput ? noteInput.value.trim() : record.note;
+
+      await saveToFirebase();
+      await fetchDataFromCloud();
+      closeModal();
+    }
+
+    async function deleteRecord(recordId) {
+      records = records.filter((record) => record.id !== recordId);
+      await saveToFirebase();
+      await fetchDataFromCloud();
+      closeModal();
+    }
+
+    async function deleteCategory(categoryId) {
+      const category = categories.find((item) => item.id === categoryId);
+      if (!category) return;
+      categories = categories.filter((item) => item.id !== categoryId);
+      records = records.filter((record) => record.category !== category.name);
+      await saveToFirebase();
+      await fetchDataFromCloud();
+    }
+
+    async function saveWeeklyImage() {
+      if (!window.html2canvas) {
+        alert("html2canvas 尚未載入，請稍後再試。");
+        return;
+      }
+
+      const captureArea = $("weeklyCaptureArea");
+      const saveButton = $("saveImageBtn");
+      const controls = captureArea.querySelector(".weekly-controls");
+      const originalText = saveButton.textContent;
+
+      try {
+        saveButton.disabled = true;
+        saveButton.textContent = "圖片產生中…";
+
+        captureArea.classList.add("export-mode");
+        controls?.classList.add("export-hidden");
+
+        /* 重新繪製心情圖，確保匯出時圓餅圖使用完整寬度。 */
+        renderMoodChart();
+
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await new Promise((resolve) => setTimeout(resolve, 180));
+
+        const exportWidth = captureArea.scrollWidth;
+        const exportHeight = captureArea.scrollHeight;
+
+        const canvas = await html2canvas(captureArea, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          width: exportWidth,
+          height: exportHeight,
+          windowWidth: exportWidth,
+          windowHeight: exportHeight,
+          scrollX: 0,
+          scrollY: 0,
+          useCORS: true,
+          logging: false
+        });
+
+        const link = document.createElement("a");
+        link.download = `yu-weekly-status-${selectedWeeklyDate}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      } catch (error) {
+        console.error(error);
+        alert("圖片儲存失敗，請重新整理頁面後再試。");
+      } finally {
+        captureArea.classList.remove("export-mode");
+        controls?.classList.remove("export-hidden");
+        saveButton.disabled = false;
+        saveButton.textContent = originalText;
+        renderMoodChart();
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll("`", "&#096;");
+    }
+
+    function bindEvents() {
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (button.dataset.page === "insight") {
+            openWeeklyScheduleForDate(selectedWeeklyDate || `${selectedMonth}-01`);
+          } else {
+            switchMainPage("daily");
+          }
+        });
+      });
+
+      $("categoryForm").addEventListener("submit", addCategory);
+      $("recordForm").addEventListener("submit", addRecord);
+      $("closeModalBtn").addEventListener("click", closeModal);
+      $("detailModal").addEventListener("click", (event) => {
+        if (event.target === $("detailModal")) closeModal();
+      });
+      $("saveImageBtn").addEventListener("click", saveWeeklyImage);
+
+      $("globalMonthSelect").addEventListener("change", (event) => {
+        syncMonthSelects(event.target.value);
+        const targetDate = `${selectedMonth}-01`;
+        updateClinicDayOptions(targetDate);
+        renderTrendChart();
+        renderHistory();
+        renderClinicTablePage();
+      });
+
+      $("trendRangeMode").addEventListener("change", (event) => {
+        selectedTrendRange = event.target.value;
+        if (!trendAnchorDate) trendAnchorDate = formatDateKey(new Date());
+        syncTrendFilterVisibility();
+        renderTrendChart();
+      });
+
+      $("trendAnchorDate").addEventListener("change", (event) => {
+        trendAnchorDate = event.target.value || formatDateKey(new Date());
+        renderTrendChart();
+      });
+
+      $("weeklyMonthSelect").addEventListener("change", (event) => {
+        syncMonthSelects(event.target.value);
+        updateClinicDayOptions(`${selectedMonth}-01`);
+        renderTrendChart();
+        renderHistory();
+        renderClinicTablePage();
+      });
+
+      $("weeklyDaySelect").addEventListener("change", (event) => {
+        selectedWeeklyDate = event.target.value;
+        renderClinicTablePage();
+      });
+
+      document.body.addEventListener("click", async (event) => {
+        const recordButton = event.target.closest("[data-record-id]");
+        if (recordButton) showDetail(recordButton.dataset.recordId);
+
+        const trendButton = event.target.closest("[data-trend]");
+        if (trendButton) {
+          selectedTrend = trendButton.dataset.trend;
+          renderTrendTabs();
+          renderTrendChart();
+        }
+
+        const saveNoteButton = event.target.closest("[data-save-note]");
+        if (saveNoteButton) await updateRecordNote(saveNoteButton.dataset.saveNote);
+
+        const cancelNoteButton = event.target.closest("[data-cancel-note]");
+        if (cancelNoteButton) closeModal();
+
+        const deleteRecordButton = event.target.closest("[data-delete-record]");
+        if (deleteRecordButton) await deleteRecord(deleteRecordButton.dataset.deleteRecord);
+
+        const deleteCategoryButton = event.target.closest("[data-delete-category]");
+        if (deleteCategoryButton) await deleteCategory(deleteCategoryButton.dataset.deleteCategory);
+      });
+    }
+
+    async function boot() {
+      initFirebaseIfConfigured();
+      bindEvents();
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => registration.unregister());
+        });
+        if (window.caches) {
+          caches.keys().then((cacheNames) => {
+            cacheNames.forEach((cacheName) => caches.delete(cacheName));
+          });
+        }
+      }
+      const now = new Date();
+      trendAnchorDate = formatDateKey(now);
+      $("recordDate").value = formatDateKey(now);
+      $("recordTime").value = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+      syncTrendFilterVisibility();
+      await fetchDataFromCloud();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
