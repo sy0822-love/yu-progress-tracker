@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>yu's 進度追蹤系統</title>
+  <title>yu's 進度追蹤系統｜文楷版</title>
   <meta name="theme-color" content="#5667d8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="yu's 進度">
@@ -344,8 +344,10 @@
       padding: 8px;
       display: grid;
       align-content: stretch;
-      grid-auto-rows: 1fr;
+      grid-auto-rows: minmax(46px, 1fr);
       gap: 7px;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .slot-cell.morning,
@@ -360,6 +362,8 @@
       text-align: left;
       width: 100%;
       height: 100%;
+      min-width: 0;
+      max-width: 100%;
       border-radius: 6px;
       border-left: 4px solid var(--event-mark);
       background: var(--event-bg);
@@ -367,8 +371,10 @@
       padding: 7px 8px;
       box-shadow: none;
       display: grid;
+      align-content: center;
       gap: 2px;
       min-height: 50px;
+      overflow: hidden;
     }
 
     .event-card:hover {
@@ -396,6 +402,14 @@
       display: -webkit-box;
       -webkit-line-clamp: 3;
       -webkit-box-orient: vertical;
+    }
+
+    .slot-cell.multiple-events {
+      grid-auto-rows: minmax(44px, 1fr);
+    }
+
+    .slot-cell.multiple-events .event-card {
+      min-height: 44px;
     }
 
     .weekly-side {
@@ -610,6 +624,9 @@
       .slot-cell {
         min-height: 104px;
         padding: 3px 2px;
+        grid-auto-rows: minmax(38px, 1fr);
+        gap: 3px;
+        overflow: hidden;
       }
 
       .event-card {
@@ -688,6 +705,12 @@
     #weeklyCaptureArea.export-mode .slot-cell {
       padding: 8px;
       gap: 7px;
+      grid-auto-rows: minmax(50px, 1fr);
+      overflow: visible;
+    }
+
+    #weeklyCaptureArea.export-mode .slot-cell.multiple-events {
+      grid-auto-rows: minmax(50px, 1fr);
     }
 
     #weeklyCaptureArea.export-mode .event-card {
@@ -1000,17 +1023,16 @@
       const usedFixedMarks = new Set(Object.values(CATEGORY_COLORS).map((item) => item.mark));
       const availablePalette = PALETTE.filter((pair) => !usedFixedMarks.has(pair[1]));
 
-      const dynamicNames = Array.from(
-        new Set([
-          ...categories.map((item) => item.name),
-          ...records.map((record) => record.category)
-        ])
-      )
-        .filter(Boolean)
-        .filter((itemName) => !CATEGORY_COLORS[itemName])
-        .sort((a, b) => a.localeCompare(b, "zh-Hant"));
+      const orderedNames = [];
+      const pushName = (itemName) => {
+        if (!itemName || CATEGORY_COLORS[itemName] || orderedNames.includes(itemName)) return;
+        orderedNames.push(itemName);
+      };
 
-      const index = dynamicNames.indexOf(name);
+      categories.forEach((item) => pushName(item.name));
+      records.forEach((record) => pushName(record.category));
+
+      const index = orderedNames.indexOf(name);
       const safeIndex = index >= 0 ? index : hashString(name);
       const pair = availablePalette[safeIndex % availablePalette.length] || PALETTE[hashString(name) % PALETTE.length];
 
@@ -1518,7 +1540,8 @@
               return date && getTimeSlot(date) === slot.key;
             })
             .sort((a, b) => a.dateTime.localeCompare(b.dateTime));
-          row.push(`<div class="slot-cell ${slot.key}">${events.map(renderEventCard).join("")}</div>`);
+          const multiClass = events.length > 1 ? " multiple-events" : "";
+          row.push(`<div class="slot-cell ${slot.key}${multiClass}">${events.map(renderEventCard).join("")}</div>`);
         }
         return row;
       });
@@ -1751,7 +1774,7 @@
       const unit = $("categoryUnit").value.trim();
       if (!name || !unit) return;
       if (!categories.some((item) => item.name === name)) {
-        categories.push({ id: crypto.randomUUID(), name, unit });
+        categories.push({ id: crypto.randomUUID(), name, unit, createdAt: Date.now() });
         await saveToFirebase();
         await fetchDataFromCloud();
       }
